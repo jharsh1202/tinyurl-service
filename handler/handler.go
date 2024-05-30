@@ -3,6 +3,7 @@ package handler
 import (
 	"log"
 	"net/http"
+	"strings"
 	"tiny-url-service/model"
 	"tiny-url-service/storage"
 	"tiny-url-service/util"
@@ -16,6 +17,28 @@ func SetupRoutes(r *gin.Engine) {
 	r.GET("/:shortURL", redirectURL)
 }
 
+// ensureURLScheme ensures the URL has a scheme (http:// or https://)
+func ensureURLScheme(url string) string {
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		return "http://" + url
+	}
+	return url
+}
+
+// generateUniqueShortURL generates a unique short URL
+func generateUniqueShortURL() (string, error) {
+	for {
+		shortURL := util.GenerateShortURL()
+		exists, err := storage.URLExists(shortURL)
+		if err != nil {
+			return "", err
+		}
+		if !exists {
+			return shortURL, nil
+		}
+	}
+}
+
 // shortenURL handles the URL shortening requests
 func shortenURL(c *gin.Context) {
 	var req model.ShortenRequest
@@ -24,10 +47,18 @@ func shortenURL(c *gin.Context) {
 		return
 	}
 
-	shortURL := util.GenerateShortURL()
+	// Ensure the URL is fully qualified
+	req.URL = ensureURLScheme(req.URL)
+
+	shortURL, err := generateUniqueShortURL()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate a unique short URL"})
+		return
+	}
+
 	expiryTime := req.GetExpiryTime()
 
-	err := storage.StoreURL(shortURL, req.URL, expiryTime)
+	err = storage.StoreURL(shortURL, req.URL, expiryTime)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to store URL"})
 		return

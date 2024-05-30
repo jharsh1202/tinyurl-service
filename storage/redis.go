@@ -36,3 +36,14 @@ func GetURL(shortURL string) (string, error) {
 	}
 	return originalURL, nil
 }
+
+// URLExists checks if a short URL already exists
+func URLExists(shortURL string) (bool, error) {
+	_, err := rdb.Get(ctx, shortURL).Result()
+	if err == redis.Nil {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	return true, nil
+}
