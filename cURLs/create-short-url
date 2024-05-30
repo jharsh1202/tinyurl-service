@@ -1,0 +1,6 @@
+curl --location 'http://localhost:8080/shorten' \
+--header 'Content-Type: application/json' \
+--data '{
+    "url": "https://www.youtube.com/watch?v=l5sgIqzlPXc",
+    "expiry": 1
+}'
